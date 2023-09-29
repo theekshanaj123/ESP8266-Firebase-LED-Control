@@ -13,6 +13,7 @@
 
 #include <ESP8266WiFi.h>
 #include <Firebase_ESP_Client.h>
+#include <WiFiManager.h>
 
 //Provide the token generation process info.
 #include "addons/TokenHelper.h"
@@ -20,8 +21,8 @@
 #include "addons/RTDBHelper.h"
 
 // Insert your network credentials
-#define WIFI_SSID "Dialog 4G 929"
-#define WIFI_PASSWORD "60c302f3"
+// #define WIFI_SSID "Dialog 4G 929"
+// #define WIFI_PASSWORD "60c302f3"
 
 // Insert Firebase project API Key
 #define API_KEY "AIzaSyAlPBreNK8nZPvmJWDUlB8i9FbBzSqyCtk"
@@ -39,19 +40,28 @@ unsigned long sendDataPrevMillis = 0;
 int intValue;
 float floatValue;
 bool signupOK = false;
+const int LED_PIN = A0;
 
 void setup() {
+
+  //input and outputs
+  pinMode(LED_BUILTIN, OUTPUT);
+
   Serial.begin(115200);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("Connecting to Wi-Fi");
-  while (WiFi.status() != WL_CONNECTED) {
-    Serial.print(".");
-    delay(300);
+
+  // Create an instance of WiFiManager
+  WiFiManager wifiManager;
+
+   // Connect to Wi-Fi or enter configuration mode
+  if (!wifiManager.autoConnect("AutoConnectAP")) {
+    Serial.println("Failed to connect or configure. Restarting...");
+    delay(3000);
+    ESP.reset();
+    delay(5000);
   }
-  Serial.println();
-  Serial.print("Connected with IP: ");
-  Serial.println(WiFi.localIP());
-  Serial.println();
+
+  // Successfully connected or configured
+  Serial.println("Connected to Wi-Fi!");
 
   /* Assign the api key (required) */
   config.api_key = API_KEY;
@@ -73,29 +83,33 @@ void setup() {
 
   Firebase.begin(&config, &auth);
   Firebase.reconnectWiFi(true);
+
+  digitalWrite(LED_BUILTIN, LOW);
 }
 
 void loop() {
-  if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 15000 || sendDataPrevMillis == 0)) {
+  if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 1500 || sendDataPrevMillis == 0)) {
     sendDataPrevMillis = millis();
     if (Firebase.RTDB.getInt(&fbdo, "/test/int")) {
       if (fbdo.dataType() == "int") {
         intValue = fbdo.intData();
         Serial.println(intValue);
-      }
-    }
-    else {
-      Serial.println(fbdo.errorReason());
-    }
-    
-    if (Firebase.RTDB.getFloat(&fbdo, "/test/float")) {
-      if (fbdo.dataType() == "float") {
-        floatValue = fbdo.floatData();
-        Serial.println(floatValue);
+
+        if(intValue != 1)
+        {
+          Serial.println("intValue");
+          digitalWrite(LED_BUILTIN, HIGH);
+        }
+        else{
+          digitalWrite(LED_BUILTIN, LOW);
+        }
       }
     }
     else {
       Serial.println(fbdo.errorReason());
     }
   }
+
+  Serial.println("other on");
+
 }

@@ -26,3 +26,21 @@ Before you begin, make sure you have the following:
    ```cpp
    #define API_KEY "YOUR_FIREBASE_API_KEY"
    #define DATABASE_URL "YOUR_FIREBASE_DATABASE_URL"
+
+## Usage
+
+1. **Power up your ESP8266 board.**
+
+2. The board will create a Wi-Fi access point named "AutoConnectAP." **Connect your computer or mobile device to this access point.**
+
+3. **Open a web browser** and navigate to [http://192.168.4.1](http://192.168.4.1) to access the configuration page.
+
+4. **Follow the on-screen instructions** to connect the ESP8266 to your Wi-Fi network.
+
+5. Once connected, the ESP8266 will connect to Firebase and sign up.
+
+6. You can control the LED by changing the value in the Firebase Realtime Database. **Set the value at `/test/int` to either `0` or `1`** to turn the LED off or on, respectively.
+
+### LED Blinking
+
+The sketch also includes a feature that blinks the LED when the Firebase RTDB value is set to `1`. It blinks the LED 40 times with a half-second interval and then turns the LED off.

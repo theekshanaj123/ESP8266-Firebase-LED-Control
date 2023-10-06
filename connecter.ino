@@ -19,7 +19,6 @@
 
 //Define Firebase Data object
 FirebaseData fbdo;
-
 FirebaseAuth auth;
 FirebaseConfig config;
 
@@ -35,6 +34,14 @@ unsigned long blinkInterval = 1000;  // Blink interval in milliseconds
 bool databaseUpdated = false;
 unsigned long blinkCounter = 0;
 
+unsigned long lastWiFiCheckTime = 0;                // Variable to store the last time the Wi-Fi check was performed
+const unsigned long wifiCheckInterval = 60 * 1000;  // 1 minutes in milliseconds
+
+const int buttonPin = 2;             // GPIO2 is connected to the button
+int buttonState = HIGH;              // The current state of the button
+int lastButtonState = HIGH;          // The previous state of the button
+unsigned long lastDebounceTime = 0;  // The last time the button state changed
+unsigned long debounceDelay = 50;    // Debounce time in milliseconds
 
 
 void setup() {
@@ -44,19 +51,7 @@ void setup() {
 
   Serial.begin(115200);
 
-  // Create an instance of WiFiManager
-  WiFiManager wifiManager;
-
-  // Connect to Wi-Fi or enter configuration mode
-  if (!wifiManager.autoConnect("AutoConnectAP")) {
-    Serial.println("Failed to connect or configure. Restarting...");
-    delay(3000);
-    ESP.reset();
-    delay(5000);
-  }
-
-  // Successfully connected or configured
-  Serial.println("Connected to Wi-Fi!");
+  connectToWiFi();
 
   /* Assign the api key (required) */
   config.api_key = API_KEY;
@@ -69,7 +64,7 @@ void setup() {
     Serial.println("ok");
     signupOK = true;
   } else {
-    Serial.printf("%s\n", config.signer.signupError.message.c_str());
+    Serial.printf("Sing Up : %s\n", config.signer.signupError.message.c_str());
   }
 
   /* Assign the callback function for the long running token generation task */
@@ -86,8 +81,6 @@ void setup() {
   }
 }
 
-
-
 unsigned long previousMillis = 0;
 const long interval = 500;  // Blink interval in milliseconds
 int blinkCount = 0;
@@ -96,12 +89,22 @@ int intValue = 0;  // Initialize
 unsigned long startBlinkMillis = 0;
 
 void loop() {
-  if (Firebase.ready() && signupOK && (millis() - sendDataPrevMillis > 1500 || sendDataPrevMillis == 0)) {
+
+  // Read the button state
+  int reading = digitalRead(buttonPin);
+  Serial.println("Button pin = "+reading);
+
+  // Check if the button state has changed
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
+  }
+
+  if (Firebase.ready() && WiFi.status() == WL_CONNECTED && signupOK && (millis() - sendDataPrevMillis > 1500 || sendDataPrevMillis == 0)) {
     sendDataPrevMillis = millis();
     if (Firebase.RTDB.getInt(&fbdo, "/test/int")) {
       if (fbdo.dataType() == "int") {
         intValue = fbdo.intData();
-        Serial.println(intValue);
+        Serial.println("Firebase val :"+intValue);
         if (intValue == 0) {
           digitalWrite(LED_BUILTIN, HIGH);  // Turn off the LED
           isBlinking = false;
@@ -119,13 +122,14 @@ void loop() {
       }
     } else {
       Serial.println("Firebase read error: " + fbdo.errorReason());
+      // connectToWiFi();
     }
   }
 
   // Handle LED blinking
   if (isBlinking) {
     unsigned long currentMillis = millis();
-    if (currentMillis - previousMillis >= interval) {
+    if (WiFi.status() == WL_CONNECTED && (currentMillis - previousMillis >= interval)) {
       previousMillis = currentMillis;
       digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));  // Toggle LED state
       blinkCount++;
@@ -134,16 +138,47 @@ void loop() {
         digitalWrite(LED_BUILTIN, HIGH);  // Turn off the LED
         // Set Firebase value to 0
         Firebase.RTDB.setInt(&fbdo, "/test/int", 0);
-        // Firebase.updateNode(&fbdo, "/test/int", 0);
       }
     }
-
-    // Check if 1 minute has passed
-    // if (currentMillis - startBlinkMillis >= 60000) {
-    //   isBlinking = false;
-    //   digitalWrite(LED_BUILTIN, HIGH);
-    //   Firebase.RTDB.setInt(&fbdo, "/test/int", 0);
-    //   // Firebase.RTDB.updateNode()updateNode(&fbdo, "/test/int", 0);
-    // }
   }
+
+  // Check if the button state has remained stable for the debounce delay
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    // If the button state is different from the last state, it's a valid button press
+    if (reading != buttonState) {
+      buttonState = reading;
+
+      // Print the button state to Serial Monitor
+      Serial.println(buttonState);
+
+      // Add your code here to respond to button presses
+      if (buttonState == LOW) {
+        // Button is pressed
+        if (Firebase.ready() && signupOK) {
+          Firebase.RTDB.setInt(&fbdo, "/test/int1", 1);
+        }
+      }
+    }
+  }
+
+  // Save the current button state for comparison
+  lastButtonState = reading;
+}
+
+
+
+void connectToWiFi() {
+  // Create an instance of WiFiManager
+  WiFiManager wifiManager;
+
+  // Connect to Wi-Fi or enter configuration mode
+  if (!wifiManager.autoConnect("connecter")) {
+    Serial.println("Failed to connect or configure. Restarting...");
+    delay(3000);
+    ESP.reset();
+    delay(5000);
+  }
+
+  // Successfully connected or configured
+  Serial.println("Connected to Wi-Fi!");
 }

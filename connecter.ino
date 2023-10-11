@@ -22,6 +22,9 @@ FirebaseData fbdo;
 FirebaseAuth auth;
 FirebaseConfig config;
 
+// Create an instance of WiFiManager
+WiFiManager wifiManager;
+
 unsigned long sendDataPrevMillis = 0;
 // int intValue;
 float floatValue;
@@ -37,7 +40,7 @@ unsigned long blinkCounter = 0;
 unsigned long lastWiFiCheckTime = 0;                // Variable to store the last time the Wi-Fi check was performed
 const unsigned long wifiCheckInterval = 60 * 1000;  // 1 minutes in milliseconds
 
-const int buttonPin = 2;             // GPIO2 is connected to the button
+const int buttonPin = 0;             // GPIO2 is connected to the button
 int buttonState = HIGH;              // The current state of the button
 int lastButtonState = HIGH;          // The previous state of the button
 unsigned long lastDebounceTime = 0;  // The last time the button state changed
@@ -92,19 +95,13 @@ void loop() {
 
   // Read the button state
   int reading = digitalRead(buttonPin);
-  Serial.println("Button pin = "+reading);
-
-  // Check if the button state has changed
-  if (reading != lastButtonState) {
-    lastDebounceTime = millis();
-  }
 
   if (Firebase.ready() && WiFi.status() == WL_CONNECTED && signupOK && (millis() - sendDataPrevMillis > 1500 || sendDataPrevMillis == 0)) {
     sendDataPrevMillis = millis();
     if (Firebase.RTDB.getInt(&fbdo, "/test/int")) {
       if (fbdo.dataType() == "int") {
         intValue = fbdo.intData();
-        Serial.println("Firebase val :"+intValue);
+        Serial.println("Firebase val :" + intValue);
         if (intValue == 0) {
           digitalWrite(LED_BUILTIN, HIGH);  // Turn off the LED
           isBlinking = false;
@@ -122,7 +119,6 @@ void loop() {
       }
     } else {
       Serial.println("Firebase read error: " + fbdo.errorReason());
-      // connectToWiFi();
     }
   }
 
@@ -142,34 +138,24 @@ void loop() {
     }
   }
 
-  // Check if the button state has remained stable for the debounce delay
-  if ((millis() - lastDebounceTime) > debounceDelay) {
-    // If the button state is different from the last state, it's a valid button press
-    if (reading != buttonState) {
-      buttonState = reading;
-
-      // Print the button state to Serial Monitor
-      Serial.println(buttonState);
-
-      // Add your code here to respond to button presses
-      if (buttonState == LOW) {
-        // Button is pressed
-        if (Firebase.ready() && signupOK) {
-          Firebase.RTDB.setInt(&fbdo, "/test/int1", 1);
-        }
+  if (reading != buttonState) {
+    buttonState = reading;
+    if (buttonState == HIGH) {
+      if (Firebase.ready() && signupOK) {
+        Firebase.RTDB.setInt(&fbdo, "/test/int1", 1);
       }
+      // Button pressed, implement your function here
+      // You can use if statements to differentiate between short press, double press, long press, etc.
+      Serial.println("Button pressed in");
     }
   }
-
-  // Save the current button state for comparison
-  lastButtonState = reading;
 }
 
 
 
 void connectToWiFi() {
-  // Create an instance of WiFiManager
-  WiFiManager wifiManager;
+
+  wifiManager.setConnectTimeout(360);
 
   // Connect to Wi-Fi or enter configuration mode
   if (!wifiManager.autoConnect("connecter")) {

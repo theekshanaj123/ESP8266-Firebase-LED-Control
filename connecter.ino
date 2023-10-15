@@ -47,6 +47,14 @@ unsigned long lastDebounceTime = 0;  // The last time the button state changed
 unsigned long debounceDelay = 50;    // Debounce time in milliseconds
 
 
+unsigned long previousMillis = 0;
+const long interval = 500;  // Blink interval in milliseconds
+int blinkCount = 0;
+bool isBlinking = false;
+int intValue = 0;  // Initialize
+unsigned long startBlinkMillis = 0;
+
+
 void setup() {
 
   //input and outputs
@@ -83,13 +91,6 @@ void setup() {
     digitalWrite(LED_BUILTIN, HIGH);
   }
 }
-
-unsigned long previousMillis = 0;
-const long interval = 500;  // Blink interval in milliseconds
-int blinkCount = 0;
-bool isBlinking = false;
-int intValue = 0;  // Initialize
-unsigned long startBlinkMillis = 0;
 
 void loop() {
 
